@@ -29,57 +29,65 @@ import mediapipe as mp
 
 
 
-# class Target:
-#     """
-#     A class to represent a random target. It spawns randomly within 
-#     the given bounds.
-#     """
-#     def __init__(self, screen_width=600, screen_height=400):
-#         self.screen_width = screen_width
-#         self.screen_height = screen_height
-#         # self.target_overlay()
+class Target:
+    """
+    A class to represent a random target. It spawns randomly within 
+    the given bounds.
+    """
+    def __init__(self, screen_width=600, screen_height=400):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        # self.target_overlay()
     
-#     # def respawn(self):
-#     #     """
-#     #     Selects a random location on the screen to respawn
-#     #     """
-#     #     self.x = random.randint(50, self.screen_height)
-#     #     self.y = random.randint(50, self.screen_width)
+    # def respawn(self):
+    #     """
+    #     Selects a random location on the screen to respawn
+    #     """
+    #     self.x = random.randint(50, self.screen_height)
+    #     self.y = random.randint(50, self.screen_width)
     
-#     # def draw(self, image):
-#     #     """
-#     #     Enemy is drawn as a circle onto the image
+    # def draw(self, image):
+    #     """
+    #     Enemy is drawn as a circle onto the image
 
-#     #     Args:
-#     #         image (Image): The image to draw the enemy onto
-#     #     """
-#     #     cv2.circle(image, (self.x, self.y), 25, self.color, 5)
+    #     Args:
+    #         image (Image): The image to draw the enemy onto
+    #     """
+    #     cv2.circle(image, (self.x, self.y), 25, self.color, 5)
 
-#     def target_overlay():
-#         # Load the overlay image with an alpha channel (transparency)
-#         target = cv2.imread('data/target.png', -1)
+    def target_overlay():
+        # Load the overlay image with an alpha channel (transparency)
+        # Load the overlay image with an alpha channel (transparency)
+        cowboy_hat = cv2.imread('data/cowboyhat.png', -1)
 
-#         # Capture video from the webcam
-#         video = cv2.VideoCapture(0)
-
-#         while True:
-#             frame = video.read()[1]
-
-#             # Where to place the cowboy hat on the screen
-#             y1, y2 = 50, 50 + target.shape[0]
-#             x1, x2 = 50, 50 + target.shape[1]
-
-#             # Saving the alpha values (transparencies)
-#             alpha = target[:, :, 3] / 255.0
-
-#             # Overlays the image onto the frame (Don't change this)
-#             for c in range(0, 3):
-#                 frame[y1:y2, x1:x2, c] = (alpha * target[:, :, c] +
-#                                         (1.0 - alpha) * frame[y1:y2, x1:x2, c])
-            
-#             # Display the resulting frame
-#             cv2.imshow('Target', frame)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         
+        # Capture video from the webcam
+        video = cv2.VideoCapture(1)
+
+        while True:
+            frame = video.read()[1]
+
+            image_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(image_gray, scaleFactor=1.1, minSize=(100,100))
+
+            for (start_x, start_y, width, height) in faces:
+                end_x = start_x + cowboy_hat.shape[1]
+                end_y = start_y - cowboy_hat.shape[0]
+
+                # Saving the alpha values (transparencies)
+                alpha = cowboy_hat[:, :, 3] / 255.0
+
+                # Overlays the image onto the frame (Don't change this)
+                for c in range(0, 3):
+                    frame[end_y:start_y, start_x:end_x, c] = (alpha * cowboy_hat[:, :, c] +
+                                            (1.0 - alpha) * frame[end_y:start_y, start_x:end_x, c])
+            
+            # Display the resulting frame
+            cv2.imshow('Cowboy Hat', frame)
+            
+           
+            
       
 class Game:
     def __init__(self):
@@ -102,6 +110,20 @@ class Game:
         # TODO: Load video
         # self.mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.VideoCapture(0))
         self.video = cv2.VideoCapture(0)
+
+    def calculate_ear(self, eye_landmarks):
+        # Calculate the distance between the vertical eye landmarks
+        vertical_dist1 = np.linalg.norm(eye_landmarks[1] - eye_landmarks[5])
+        vertical_dist2 = np.linalg.norm(eye_landmarks[2] - eye_landmarks[4])
+        vertical_dist = (vertical_dist1 + vertical_dist2) / 2
+
+        # Calculate the distance between the horizontal eye landmarks
+        horizontal_dist = np.linalg.norm(eye_landmarks[0] - eye_landmarks[3])
+
+        # Calculate the eye aspect ratio (EAR)
+        ear = vertical_dist / (2 * horizontal_dist)
+
+        return ear
 
     def draw_landmarks_on_image(self, rgb_image, detection_result):
         face_landmarks_list = detection_result.face_landmarks
@@ -138,30 +160,24 @@ class Game:
                     landmark_drawing_spec=None,
                     connection_drawing_spec=mp.solutions.drawing_styles
                     .get_default_face_mesh_iris_connections_style())
+            
+            if detection_result.face_landmarks:
+                for face_landmarks in detection_result.face_landmarks:
+                    left_eye_landmarks = np.array([(lm.x * annotated_image.shape[1], lm.y * annotated_image.shape[0]) for lm in face_landmarks[159:246]])
+                    right_eye_landmarks = np.array([(lm.x * annotated_image.shape[1], lm.y * annotated_image.shape[0]) for lm in face_landmarks[386:468]])
+                    left_ear = self.calculate_ear(left_eye_landmarks)
+                    right_ear = self.calculate_ear(right_eye_landmarks)
+                    
+                    # You can adjust this threshold as needed
+                    blink_threshold = .4
+                    
+                    if left_ear < blink_threshold and right_ear < blink_threshold:
+                        print("Blink detected!")
+                        self.score += 1
 
         return annotated_image
 
-    def plot_face_blendshapes_bar_graph(self, face_blendshapes):
-        # Extract the face blendshapes category names and scores.
-        face_blendshapes_names = [face_blendshapes_category.category_name for face_blendshapes_category in face_blendshapes]
-        face_blendshapes_scores = [face_blendshapes_category.score for face_blendshapes_category in face_blendshapes]
-        # The blendshapes are ordered in decreasing score value.
-        face_blendshapes_ranks = range(len(face_blendshapes_names))
-
-        fig, ax = plt.subplots(figsize=(12, 12))
-        bar = ax.barh(face_blendshapes_ranks, face_blendshapes_scores, label=[str(x) for x in face_blendshapes_ranks])
-        ax.set_yticks(face_blendshapes_ranks, face_blendshapes_names)
-        ax.invert_yaxis()
-
-        # Label each bar with values
-        for score, patch in zip(face_blendshapes_scores, bar.patches):
-            plt.text(patch.get_x() + patch.get_width(), patch.get_y(), f"{score:.4f}", va="top")
-
-        ax.set_xlabel('Score')
-        ax.set_title("Face Blendshapes")
-        plt.tight_layout()
-        plt.show()
-            
+   
     
     def run(self):
 #         """
@@ -182,12 +198,6 @@ class Game:
             # the image is mirrored - flip it
             image = cv2.flip(image, 1)
 
-#             # draw the enemy on the image
-#             self.green_enemy.draw(image)
-#             self.red_enemy.draw(image)
-#             # draw score on to screen
-#             cv2.putText(image, str(self.score), (50, 50), fontFace= cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale =1, color=GREEN, thickness=2)
-
             # Convert the image to a readable format and find the hands
             to_detect = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
             face_landmarker_result = self.landmarker.detect(to_detect)
@@ -196,31 +206,6 @@ class Game:
 
             annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
             cv2.imshow('Face Tracking', annotated_image)
-            # cv2.imshow(cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
-            # print(face_landmarker_result)
-
-#             # Draw the hand landmarks
-#             # self.draw_landmarks_on_hand(image, results)
-#             # self.check_enemy_kill(image, results)
-
-#             # Change the color of the frame back
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # cv2.imshow('Hand Tracking', image)
-
-#             end_time = t.time()
-
-#             # if time == True and self.score >= 10:
-#             #     print(int(end_time - start_time))
-#             #     break
-#             # if self.inf == True and (end_time - start_time) > 2:
-#             #     start_time = t.time()
-#             #     self.enemy.append(Enemy(GREEN)) 
-#             #     self.enemy.append(Enemy(RED))
-#             #     self.enemy_count += 2
-#             # if self.enemy_count >= 20:
-#             #     print("Max Reached Game Over! Score: " + str(self.score))
-#             #     break
-
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
