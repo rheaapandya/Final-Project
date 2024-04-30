@@ -27,67 +27,9 @@ BLUE = (0, 0, 255)
 # Library Constants
 import mediapipe as mp
 
+import pygame
+import sys
 
-
-class Target:
-    """
-    A class to represent a random target. It spawns randomly within 
-    the given bounds.
-    """
-    def __init__(self, screen_width=600, screen_height=400):
-        self.screen_width = screen_width
-        self.screen_height = screen_height
-        # self.target_overlay()
-    
-    # def respawn(self):
-    #     """
-    #     Selects a random location on the screen to respawn
-    #     """
-    #     self.x = random.randint(50, self.screen_height)
-    #     self.y = random.randint(50, self.screen_width)
-    
-    # def draw(self, image):
-    #     """
-    #     Enemy is drawn as a circle onto the image
-
-    #     Args:
-    #         image (Image): The image to draw the enemy onto
-    #     """
-    #     cv2.circle(image, (self.x, self.y), 25, self.color, 5)
-
-    def target_overlay():
-        # Load the overlay image with an alpha channel (transparency)
-        # Load the overlay image with an alpha channel (transparency)
-        cowboy_hat = cv2.imread('data/cowboyhat.png', -1)
-
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        
-        # Capture video from the webcam
-        video = cv2.VideoCapture(1)
-
-        while True:
-            frame = video.read()[1]
-
-            image_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(image_gray, scaleFactor=1.1, minSize=(100,100))
-
-            for (start_x, start_y, width, height) in faces:
-                end_x = start_x + cowboy_hat.shape[1]
-                end_y = start_y - cowboy_hat.shape[0]
-
-                # Saving the alpha values (transparencies)
-                alpha = cowboy_hat[:, :, 3] / 255.0
-
-                # Overlays the image onto the frame (Don't change this)
-                for c in range(0, 3):
-                    frame[end_y:start_y, start_x:end_x, c] = (alpha * cowboy_hat[:, :, c] +
-                                            (1.0 - alpha) * frame[end_y:start_y, start_x:end_x, c])
-            
-            # Display the resulting frame
-            cv2.imshow('Cowboy Hat', frame)
-            
-           
-            
       
 class Game:
     def __init__(self):
@@ -110,6 +52,12 @@ class Game:
         # TODO: Load video
         # self.mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.VideoCapture(0))
         self.video = cv2.VideoCapture(0)
+
+        # Get the original width and height of the image
+        
+        self.screen_width = 900
+        self.screen_height = 900
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
 
     def calculate_ear(self, eye_landmarks):
         # Calculate the distance between the vertical eye landmarks
@@ -185,7 +133,25 @@ class Game:
 #         user presses "q".
 #         """    
 #         # TODO: Modify loop condition  
-        while self.video.isOpened():
+
+        image_path = "data/target.png"  # Replace "your_image_file.jpg" with the path to your image
+        try:
+            imageTarget = pygame.image.load(image_path)
+        
+            original_width = imageTarget.get_width()
+            original_height = imageTarget.get_height()
+
+            scale_factor = 0.5
+
+            new_width = int(original_width * scale_factor)
+            new_height = int(original_height * scale_factor)
+            imageTarget = pygame.transform.scale(imageTarget, (new_width, new_height))
+        except pygame.error as e:
+            print("Unable to load image:", e)
+            sys.exit()
+
+        running = True
+        while self.video.isOpened() and running:
 
 #             time = False
 
@@ -205,7 +171,22 @@ class Game:
             annotated_image = self.draw_landmarks_on_image(image, face_landmarker_result)
 
             annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
-            cv2.imshow('Face Tracking', annotated_image)
+            # cv2.imshow('Face Tracking', annotated_image)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+            # Fill the screen with white color
+            # screen.fill((255, 255, 255))
+
+            # Blit the image onto the screen
+
+            
+            image_rect = imageTarget.get_rect()
+            self.screen.blit(imageTarget, ((self.screen_width - new_width) // 2, (self.screen_height - new_height) // 2))
+
+            # Update the display
+            pygame.display.flip()
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
