@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 
 
 RED = (255, 0, 0)
-GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
 
 # Library Constants
@@ -58,6 +58,46 @@ class Game:
         self.screen_width = 900
         self.screen_height = 900
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+
+        # Load arrow image
+        self.arrow_img = pygame.image.load("data/arrow.png")
+        self.arrow_width, self.arrow_height = self.arrow_img.get_rect().size
+
+        # Set initial arrow position
+        self.arrow_x = self.screen_width // 2 - self.arrow_width // 2
+        self.arrow_y = self.screen_height // 2 - self.arrow_height // 2
+
+        # Set initial arrow velocity
+        self.arrow_vel = 5
+
+        # Set arrow direction
+        self.direction = 1  # 1 for right, -1 for left
+
+        self.blink_detected = False
+
+    def draw_arrow(self):
+        # Draw arrow on the screen
+        self.screen.blit(self.arrow_img, (self.arrow_x, self.arrow_y))
+
+    def update_arrow_position(self):
+        if not self.blink_detected:
+            self.arrow_x += self.direction * self.arrow_vel
+
+            # Change direction if arrow reaches screen boundaries
+            if self.arrow_x <= 0 or self.arrow_x >= self.screen_width - self.arrow_width:
+                self.direction *= -1
+
+    def check_arrow_position(self):
+        # Check color of the pixel at arrow's position on the target image
+        point_color = self.arrow_img.get_at((self.arrow_width // 2, 0))
+        print(point_color)
+        # Compare color of the arrow to predefined color thresholds
+        if point_color == RED:
+            print("Arrow landed in the red region!")
+        elif point_color == YELLOW:
+            print("Arrow landed in the yellow region!")
+        elif point_color == BLUE:
+            print("Arrow landed in the blue region!")
 
     def calculate_ear(self, eye_landmarks):
         # Calculate the distance between the vertical eye landmarks
@@ -122,6 +162,7 @@ class Game:
                     if left_ear < blink_threshold and right_ear < blink_threshold:
                         print("Blink detected!")
                         self.score += 1
+                        self.blink_detected = True
 
         return annotated_image
 
@@ -173,6 +214,10 @@ class Game:
             annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
             # cv2.imshow('Face Tracking', annotated_image)
 
+            self.update_arrow_position()
+
+            self.screen.fill((255, 255, 255))
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -184,6 +229,9 @@ class Game:
             
             image_rect = imageTarget.get_rect()
             self.screen.blit(imageTarget, ((self.screen_width - new_width) // 2, (self.screen_height - new_height) // 2))
+            self.draw_arrow()
+
+            self.check_arrow_position()
 
             # Update the display
             pygame.display.flip()
