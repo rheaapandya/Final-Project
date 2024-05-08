@@ -75,6 +75,21 @@ class Game:
 
         self.blink_detected = False
 
+        
+        self.imageTarget = pygame.image.load("data/target.png")
+
+        original_width = self.imageTarget.get_width()
+        original_height = self.imageTarget.get_height()
+
+        scale_factor = 0.5
+
+        self.imageTarget_width = int(original_width * scale_factor)
+        self.imageTarget_height = int(original_height * scale_factor)
+        self.imageTarget = pygame.transform.scale(self.imageTarget, (self.imageTarget_width, self.imageTarget_height))
+
+        self.imageTarget_x = self.screen_width - self.imageTarget_width
+        self.imageTarget_y = self.screen_height - self.imageTarget_height
+
     def draw_arrow(self):
         # Draw arrow on the screen
         self.screen.blit(self.arrow_img, (self.arrow_x, self.arrow_y))
@@ -89,15 +104,22 @@ class Game:
 
     def check_arrow_position(self):
         # Check color of the pixel at arrow's position on the target image
-        point_color = self.arrow_img.get_at((self.arrow_width // 2, 0))
-        print(point_color)
+        print("____ arrow")
+        print(self.arrow_x)
+        print(self.arrow_y)
+        print("____ target")
+        print(self.imageTarget_x)
+        print(self.imageTarget_y)
+        # (self.arrow_x, self.arrow_y - ((self.arrow_height // 2) - 10))
+        # point_color = self.imageTarget.get_at((self.arrow_x - self.imageTarget_x, self.arrow_y - self.imageTarget_y))
+        # print(point_color)
         # Compare color of the arrow to predefined color thresholds
-        if point_color == RED:
-            print("Arrow landed in the red region!")
-        elif point_color == YELLOW:
-            print("Arrow landed in the yellow region!")
-        elif point_color == BLUE:
-            print("Arrow landed in the blue region!")
+        # if point_color == RED:
+        #     print("Arrow landed in the red region!")
+        # elif point_color == YELLOW:
+        #     print("Arrow landed in the yellow region!")
+        # elif point_color == BLUE:
+        #     print("Arrow landed in the blue region!")
 
     def calculate_ear(self, eye_landmarks):
         # Calculate the distance between the vertical eye landmarks
@@ -175,26 +197,9 @@ class Game:
 #         """    
 #         # TODO: Modify loop condition  
 
-        image_path = "data/target.png"  # Replace "your_image_file.jpg" with the path to your image
-        try:
-            imageTarget = pygame.image.load(image_path)
         
-            original_width = imageTarget.get_width()
-            original_height = imageTarget.get_height()
-
-            scale_factor = 0.5
-
-            new_width = int(original_width * scale_factor)
-            new_height = int(original_height * scale_factor)
-            imageTarget = pygame.transform.scale(imageTarget, (new_width, new_height))
-        except pygame.error as e:
-            print("Unable to load image:", e)
-            sys.exit()
-
         running = True
         while self.video.isOpened() and running:
-
-#             time = False
 
             # Get the current frame
             frame = self.video.read()[1]
@@ -227,8 +232,8 @@ class Game:
             # Blit the image onto the screen
 
             
-            image_rect = imageTarget.get_rect()
-            self.screen.blit(imageTarget, ((self.screen_width - new_width) // 2, (self.screen_height - new_height) // 2))
+            image_rect = self.imageTarget.get_rect()
+            self.screen.blit(self.imageTarget, ((self.screen_width - self.imageTarget_width) // 2, (self.screen_height - self.imageTarget_height) // 2))
             self.draw_arrow()
 
             self.check_arrow_position()
