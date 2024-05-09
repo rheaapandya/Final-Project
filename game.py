@@ -30,7 +30,8 @@ import mediapipe as mp
 import pygame
 import sys
 
-      
+pygame.font.init()
+
 class Game:
     def __init__(self):
         # Load game elements
@@ -90,6 +91,11 @@ class Game:
         self.imageTarget_x = self.screen_width - self.imageTarget_width
         self.imageTarget_y = self.screen_height - self.imageTarget_height
 
+        self.font = pygame.font.Font(None, 36)
+
+        # Initialize the score
+        self.score = 1000
+
     def draw_arrow(self):
         # Draw arrow on the screen
         self.screen.blit(self.arrow_img, (self.arrow_x, self.arrow_y))
@@ -104,12 +110,14 @@ class Game:
 
     def check_arrow_position(self):
         # Check color of the pixel at arrow's position on the target image
-        print("____ arrow")
-        print(self.arrow_x)
-        print(self.arrow_y)
-        print("____ target")
-        print(self.imageTarget_x)
-        print(self.imageTarget_y)
+        # print("arrow:")
+        # print(self.arrow_x)
+        # print("distace from middle:")
+        # print(446 - self.arrow_x)
+
+        self.score -= abs((446 - self.arrow_x)//2)
+
+
         # (self.arrow_x, self.arrow_y - ((self.arrow_height // 2) - 10))
         # point_color = self.imageTarget.get_at((self.arrow_x - self.imageTarget_x, self.arrow_y - self.imageTarget_y))
         # print(point_color)
@@ -120,6 +128,10 @@ class Game:
         #     print("Arrow landed in the yellow region!")
         # elif point_color == BLUE:
         #     print("Arrow landed in the blue region!")
+
+    def display_score(self):
+        score_text = self.font.render("Score: " + str(self.score), True, (0,0,0))
+        self.screen.blit(score_text, (10, 10))
 
     def calculate_ear(self, eye_landmarks):
         # Calculate the distance between the vertical eye landmarks
@@ -236,9 +248,15 @@ class Game:
             self.screen.blit(self.imageTarget, ((self.screen_width - self.imageTarget_width) // 2, (self.screen_height - self.imageTarget_height) // 2))
             self.draw_arrow()
 
-            self.check_arrow_position()
+            if self.blink_detected:
+                self.check_arrow_position()
+                t.sleep(5)
+                self.blink_detected = False
 
             # Update the display
+
+            self.display_score()
+    
             pygame.display.flip()
 
             # Break the loop if the user presses 'q'
